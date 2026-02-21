@@ -21,10 +21,19 @@ function roll(min, max) {
 }
 
 // ====== AUTO-MIGRATION (يحميك من Validation error) ======
+const BASE_CHARACTER_IDS = {
+  warrior_male: 1,
+  warrior_female: 2,
+  mage_male: 3,
+  mage_female: 4
+};
+
 function ensureBaseCharacterId(p) {
-  if (!p.baseCharacterId) {
-    // ثابت ويتبع نفس منطق /start
-    p.baseCharacterId = 1;
+  const key = `${p.class}_${p.gender || "male"}`;
+
+  // إذا ماكو id أو كان سترنق قديم (migration)
+  if (!p.baseCharacterId || typeof p.baseCharacterId === "string") {
+    p.baseCharacterId = BASE_CHARACTER_IDS[key] || 1;
   }
 }
 
