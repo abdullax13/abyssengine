@@ -22,7 +22,7 @@ async function generateProfileCard(player) {
 
   // ===== Load Character =====
   const character = await loadImage(
-    path.join(__dirname, "assets", "characters", "warrior_male_base.png")
+    path.join(__dirname, "assets", "characters", "warrior_male_base.PNG")
   );
 
   ctx.drawImage(character, 80, 170, 360, 560);
