@@ -111,7 +111,7 @@ module.exports = {
         ring: null
       },
       inventory: [],
-      materials: {}
+      materials: []
     };
 
     await Player.create(doc);
