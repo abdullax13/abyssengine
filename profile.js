@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require("discord.js");
 const Player = require("./Player");
 const { generateProfileCard } = require("./profileCard");
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("profile")
@@ -11,6 +12,7 @@ module.exports = {
     const userId = interaction.user.id;
 
     const p = await Player.findOne({ guildId, userId });
+
     if (!p) {
       return interaction.reply({
         content: "ما عندك شخصية. استخدم /start أولاً.",
@@ -20,7 +22,9 @@ module.exports = {
 
     const image = await generateProfileCard(p);
 
-return interaction.reply({
-  files: [{ attachment: image, name: "profile.png" }],
-  ephemeral: true
-});
+    return interaction.reply({
+      files: [{ attachment: image, name: "profile.png" }],
+      ephemeral: true
+    });
+  }
+};
