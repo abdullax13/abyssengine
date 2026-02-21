@@ -1,10 +1,15 @@
 const { SlashCommandBuilder } = require("discord.js");
 const Player = require("./Player");
 
-function buildBaseCharacterId(gender, klass) {
-  // ثابت وما يتغير مع الوقت (مهم عشان الصور لاحقاً)
-  // أمثلة: warrior_male, mage_female
-  return `${klass}_${gender}`;
+const BASE_CHARACTER_IDS = {
+  warrior_male: 1,
+  warrior_female: 2,
+  mage_male: 3,
+  mage_female: 4
+};
+
+function buildBaseCharacterId(klass, gender) {
+  return BASE_CHARACTER_IDS[`${klass}_${gender}`] || 1;
 }
 
 function starterStats(klass) {
