@@ -8,7 +8,7 @@ const {
 
 const Player = require("./Player");
 const { bar, xpToNextLevel } = require("./bar");
-
+const { rollItem, rollMaterials } = require("./loot");
 // in-memory combats (v1)
 const fights = new Map(); // key: `${guildId}:${userId}`
 
@@ -166,7 +166,25 @@ async function finishVictory(interaction, p, m, logLines) {
 
   p.gold += goldGain;
   p.xp += xpGain;
+const dungeonTier =
+  p.level <= 5 ? 1 :
+  p.level <= 10 ? 2 :
+  p.level <= 20 ? 3 : 4;
 
+// 70% item drop
+let droppedItem = null;
+if (Math.random() < 0.70) {
+  droppedItem = rollItem(p.class, dungeonTier, p.level);
+  p.inventory.push(droppedItem);
+}
+
+// materials drop
+const mats = rollMaterials(dungeonTier);
+for (const d of mats) {
+  const existing = p.materials.find(x => x.id === d.id);
+  if (existing) existing.qty += d.qty;
+  else p.materials.push({ id: d.id, name: d.name, qty: d.qty });
+}
   let leveled = false;
   while (p.xp >= xpToNextLevel(p.level) && p.level < 30) {
     p.xp -= xpToNextLevel(p.level);
@@ -184,14 +202,24 @@ async function finishVictory(interaction, p, m, logLines) {
 
   const embed = new EmbedBuilder()
     .setTitle("Victory ✅")
-    .setDescription(
-      [
-        `You defeated **${m.name}**.`,
-        `Rewards: **+${xpGain} XP**, **+${goldGain} Gold**.`,
-        leveled ? `Level Up! You are now **Lv.${p.level}**.` : ""
-      ].filter(Boolean).join("\n")
-    );
+    const itemLine = droppedItem
+  ? `🎁 Item: **${droppedItem.name}** (${droppedItem.tier}) [${droppedItem.slot}]`
+  : `🎁 Item: No drop`;
 
+const matsLine = mats.length
+  ? mats.map(x => `🧱 ${x.name} x${x.qty}`).join("\n")
+  : "🧱 No materials";
+
+.setDescription(
+  [
+    `You defeated **${m.name}**.`,
+    `Rewards: **+${xpGain} XP**, **+${goldGain} Gold**.`,
+    leveled ? `Level Up! You are now **Lv.${p.level}**.` : "",
+    "",
+    itemLine,
+    matsLine
+  ].filter(Boolean).join("\n")
+);
   await interaction.update({ embeds: [embed], components: [] });
 }
 
