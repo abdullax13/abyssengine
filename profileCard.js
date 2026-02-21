@@ -2,26 +2,33 @@ const { createCanvas, loadImage } = require("canvas");
 const path = require("path");
 
 async function generateProfileCard(player) {
-  const canvas = createCanvas(1200, 700);
+  const width = 1300;
+  const height = 750;
+
+  const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
-  // ===== Full Background =====
-  const gradient = ctx.createLinearGradient(0, 0, 1200, 700);
-  gradient.addColorStop(0, "#070b14");
-  gradient.addColorStop(1, "#0a1224");
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 1200, 700);
+  // ===== Background =====
+  const bg = ctx.createLinearGradient(0, 0, width, height);
+  bg.addColorStop(0, "#050913");
+  bg.addColorStop(1, "#0b1833");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, width, height);
 
-  // ===== Character Background Panel =====
-  ctx.fillStyle = "#0f1a33";
-  ctx.fillRect(40, 40, 450, 620);
+  // ===== Character Panel =====
+  const panelX = 60;
+  const panelY = 60;
+  const panelW = 500;
+  const panelH = 630;
 
-  // ===== Blue Glow Frame =====
+  ctx.fillStyle = "#0d1a2e";
+  ctx.fillRect(panelX, panelY, panelW, panelH);
+
   ctx.strokeStyle = "#1e90ff";
-  ctx.lineWidth = 8;
+  ctx.lineWidth = 10;
   ctx.shadowColor = "#1e90ff";
-  ctx.shadowBlur = 25;
-  ctx.strokeRect(40, 40, 450, 620);
+  ctx.shadowBlur = 30;
+  ctx.strokeRect(panelX, panelY, panelW, panelH);
   ctx.shadowBlur = 0;
 
   // ===== Load Character =====
@@ -29,37 +36,41 @@ async function generateProfileCard(player) {
     path.join(__dirname, "assets", "characters", "warrior_male_base.PNG")
   );
 
-  ctx.drawImage(character, 90, 80, 350, 550);
+  ctx.drawImage(character, panelX + 70, panelY + 40, 380, 560);
 
-  // ===== Player Name =====
+  // ===== Name & Info =====
   ctx.fillStyle = "white";
-  ctx.font = "bold 40px Arial";
-  ctx.fillText(player.name || "Unknown", 550, 90);
+  ctx.font = "bold 50px Arial";
+  ctx.fillText(player.name || "Unknown", 650, 120);
 
-  ctx.font = "28px Arial";
+  ctx.font = "32px Arial";
   ctx.fillStyle = "#1e90ff";
-  ctx.fillText(`Level ${player.level}`, 550, 130);
+  ctx.fillText(`Level ${player.level}`, 650, 170);
 
   ctx.fillStyle = "gold";
-  ctx.fillText(`Gold: ${player.gold}`, 550, 170);
+  ctx.fillText(`Gold: ${player.gold}`, 650, 215);
 
   // ===== Bars =====
-  drawBar(ctx, 550, 230, 500, 35, player.hp, player.hpMax, "#ff4444", `HP ${player.hp}/${player.hpMax}`);
+  drawBar(ctx, 650, 280, 550, 40, player.hp, player.hpMax, "#ff3b3b", `HP ${player.hp}/${player.hpMax}`);
 
   if (player.class === "mage") {
-    drawBar(ctx, 550, 290, 500, 35, player.mana, player.manaMax, "#3b82f6", `Mana ${player.mana}/${player.manaMax}`);
+    drawBar(ctx, 650, 350, 550, 40, player.mana, player.manaMax, "#3b82f6", `Mana ${player.mana}/${player.manaMax}`);
   }
 
   const xpMax = 100 + player.level * 20;
-  drawBar(ctx, 550, 350, 500, 30, player.xp, xpMax, "#22c55e", `EXP ${player.xp}/${xpMax}`);
+  drawBar(ctx, 650, 420, 550, 35, player.xp, xpMax, "#22c55e", `EXP ${player.xp}/${xpMax}`);
 
-  // ===== Equipment Slots =====
-  drawSlots(ctx);
+  // ===== Equipment Title =====
+  ctx.font = "bold 32px Arial";
+  ctx.fillStyle = "white";
+  ctx.fillText("Equipment", 650, 500);
+
+  drawSlots(ctx, 650, 540);
 
   return canvas.toBuffer();
 }
 
-function drawBar(ctx, x, y, width, height, value, max, color, text) {
+function drawBar(ctx, x, y, width, height, value, max, color, label) {
   ctx.fillStyle = "#1f2937";
   ctx.fillRect(x, y, width, height);
 
@@ -71,15 +82,13 @@ function drawBar(ctx, x, y, width, height, value, max, color, text) {
   ctx.strokeRect(x, y, width, height);
 
   ctx.fillStyle = "white";
-  ctx.font = "20px Arial";
-  ctx.fillText(text, x + 10, y + height - 10);
+  ctx.font = "22px Arial";
+  ctx.fillText(label, x + 15, y + height - 12);
 }
 
-function drawSlots(ctx) {
-  const startX = 550;
-  const startY = 430;
-  const size = 90;
-  const gap = 20;
+function drawSlots(ctx, startX, startY) {
+  const size = 100;
+  const gap = 25;
 
   for (let i = 0; i < 8; i++) {
     const row = Math.floor(i / 4);
@@ -89,7 +98,7 @@ function drawSlots(ctx) {
     const y = startY + row * (size + gap);
 
     ctx.strokeStyle = "#1e90ff";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 4;
     ctx.strokeRect(x, y, size, size);
   }
 }
