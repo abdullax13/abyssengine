@@ -2,53 +2,64 @@ const { createCanvas, loadImage } = require("canvas");
 const path = require("path");
 
 async function generateProfileCard(player) {
-  const canvas = createCanvas(1024, 1024);
+  const canvas = createCanvas(1200, 700);
   const ctx = canvas.getContext("2d");
 
-  // ===== Background =====
-  const gradient = ctx.createLinearGradient(0, 0, 1024, 1024);
-  gradient.addColorStop(0, "#0b0f1a");
-  gradient.addColorStop(1, "#05070d");
+  // ===== Full Background =====
+  const gradient = ctx.createLinearGradient(0, 0, 1200, 700);
+  gradient.addColorStop(0, "#070b14");
+  gradient.addColorStop(1, "#0a1224");
   ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 1024, 1024);
+  ctx.fillRect(0, 0, 1200, 700);
 
-  // ===== Left Frame Glow =====
+  // ===== Character Background Panel =====
+  ctx.fillStyle = "#0f1a33";
+  ctx.fillRect(40, 40, 450, 620);
+
+  // ===== Blue Glow Frame =====
   ctx.strokeStyle = "#1e90ff";
-  ctx.lineWidth = 10;
+  ctx.lineWidth = 8;
   ctx.shadowColor = "#1e90ff";
-  ctx.shadowBlur = 20;
-  ctx.strokeRect(60, 150, 400, 600);
+  ctx.shadowBlur = 25;
+  ctx.strokeRect(40, 40, 450, 620);
   ctx.shadowBlur = 0;
 
   // ===== Load Character =====
   const character = await loadImage(
-    path.join(__dirname, "assets", "characters", "warrior_male_base.PNG")
+    path.join(__dirname, "assets", "warrior_male_base.PNG")
   );
 
-  ctx.drawImage(character, 80, 170, 360, 560);
+  ctx.drawImage(character, 90, 80, 350, 550);
 
-  // ===== Stats Text =====
+  // ===== Player Name =====
   ctx.fillStyle = "white";
-  ctx.font = "bold 36px Arial";
-  ctx.fillText(`Level ${player.level}`, 550, 150);
-  ctx.font = "28px Arial";
-  ctx.fillText(`Gold: ${player.gold}`, 550, 190);
+  ctx.font = "bold 40px Arial";
+  ctx.fillText(player.name || "Unknown", 550, 90);
 
-  drawBar(ctx, 550, 260, 380, 30, player.hp, player.hpMax, "#ff4444", "HP");
+  ctx.font = "28px Arial";
+  ctx.fillStyle = "#1e90ff";
+  ctx.fillText(`Level ${player.level}`, 550, 130);
+
+  ctx.fillStyle = "gold";
+  ctx.fillText(`Gold: ${player.gold}`, 550, 170);
+
+  // ===== Bars =====
+  drawBar(ctx, 550, 230, 500, 35, player.hp, player.hpMax, "#ff4444", `HP ${player.hp}/${player.hpMax}`);
 
   if (player.class === "mage") {
-    drawBar(ctx, 550, 320, 380, 30, player.mana, player.manaMax, "#3b82f6", "MANA");
+    drawBar(ctx, 550, 290, 500, 35, player.mana, player.manaMax, "#3b82f6", `Mana ${player.mana}/${player.manaMax}`);
   }
 
-  drawBar(ctx, 550, 380, 380, 30, player.xp, 100 + player.level * 20, "#22c55e", "EXP");
+  const xpMax = 100 + player.level * 20;
+  drawBar(ctx, 550, 350, 500, 30, player.xp, xpMax, "#22c55e", `EXP ${player.xp}/${xpMax}`);
 
   // ===== Equipment Slots =====
-  drawSlots(ctx, player);
+  drawSlots(ctx);
 
   return canvas.toBuffer();
 }
 
-function drawBar(ctx, x, y, width, height, value, max, color, label) {
+function drawBar(ctx, x, y, width, height, value, max, color, text) {
   ctx.fillStyle = "#1f2937";
   ctx.fillRect(x, y, width, height);
 
@@ -61,25 +72,14 @@ function drawBar(ctx, x, y, width, height, value, max, color, label) {
 
   ctx.fillStyle = "white";
   ctx.font = "20px Arial";
-  ctx.fillText(label, x, y - 5);
+  ctx.fillText(text, x + 10, y + height - 10);
 }
 
-function drawSlots(ctx, player) {
+function drawSlots(ctx) {
   const startX = 550;
-  const startY = 500;
+  const startY = 430;
   const size = 90;
   const gap = 20;
-
-  const slots = [
-    player.equipment.weapon,
-    player.equipment.armor,
-    player.equipment.helmet,
-    null,
-    null,
-    null,
-    null,
-    null
-  ];
 
   for (let i = 0; i < 8; i++) {
     const row = Math.floor(i / 4);
@@ -91,16 +91,6 @@ function drawSlots(ctx, player) {
     ctx.strokeStyle = "#1e90ff";
     ctx.lineWidth = 3;
     ctx.strokeRect(x, y, size, size);
-
-    if (!slots[i]) {
-      ctx.fillStyle = "#444";
-      ctx.font = "40px Arial";
-      ctx.fillText("+", x + 30, y + 60);
-    } else {
-      ctx.fillStyle = "white";
-      ctx.font = "14px Arial";
-      ctx.fillText(slots[i].name.substring(0, 10), x + 10, y + 50);
-    }
   }
 }
 
