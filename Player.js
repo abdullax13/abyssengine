@@ -1,39 +1,42 @@
 const mongoose = require("mongoose");
 
-const ItemStatsSchema = new mongoose.Schema(
+const StatSchema = new mongoose.Schema(
   {
-    atk: { type: Number, default: 0 },
-    def: { type: Number, default: 0 },
     hp: { type: Number, default: 0 },
     mana: { type: Number, default: 0 },
+    atk: { type: Number, default: 0 },
+    def: { type: Number, default: 0 },
 
-    // special stats (rare)
-    crit: { type: Number, default: 0 },        // percentage e.g. 3 = 3%
-    skillPower: { type: Number, default: 0 },  // percentage
-    manaRegen: { type: Number, default: 0 }    // flat per fight/turn later
+    // special
+    crit: { type: Number, default: 0 },       // %
+    skillPower: { type: Number, default: 0 }, // %
+    manaRegen: { type: Number, default: 0 }   // flat per fight (later per turn)
   },
   { _id: false }
 );
 
 const ItemSchema = new mongoose.Schema(
   {
-    uid: { type: String, required: true }, // unique id in inventory
-    templateId: { type: String, required: true }, // fixed template (predefined)
+    uid: { type: String, required: true }, // unique id for this copy
+    baseId: { type: String, required: true }, // e.g. "warrior_sword_1"
     name: { type: String, required: true },
-    type: { type: String, enum: ["weapon", "armor", "helmet"], required: true },
+
+    slot: { type: String, enum: ["weapon", "armor", "helmet"], required: true },
     tier: { type: String, enum: ["common", "uncommon", "rare", "epic", "legendary"], required: true },
 
     levelReq: { type: Number, default: 1 },
-    upgradeLevel: { type: Number, default: 0 },
+    dungeonTier: { type: Number, default: 1 }, // 1..4 maps to your dungeon ranges
 
-    stats: { type: ItemStatsSchema, default: () => ({}) }
+    upgradeLevel: { type: Number, default: 0 }, // +0 .. +N
+    stats: { type: StatSchema, default: () => ({}) },  // base stats
+    special: { type: StatSchema, default: () => ({}) } // rare affixes only (crit/skillPower/manaRegen)
   },
   { _id: false }
 );
 
-const MaterialSchema = new mongoose.Schema(
+const MaterialStackSchema = new mongoose.Schema(
   {
-    id: { type: String, required: true },   // e.g. "slime_core"
+    id: { type: String, required: true },  // e.g. "core", "slime_gel"
     name: { type: String, required: true },
     qty: { type: Number, default: 0 }
   },
@@ -45,11 +48,11 @@ const PlayerSchema = new mongoose.Schema(
     guildId: { type: String, required: true, index: true },
     userId: { type: String, required: true, index: true },
 
-    // ثابت لمنع تغيّر شكل الشخصية مستقبلاً
-    baseCharacterId: { type: Number, default: 1 }, // 1..4 later
+    // ثابت للصور لاحقاً
+    baseCharacterId: { type: Number, required: true }, // 1..4
 
     name: { type: String, required: true },
-    gender: { type: String, enum: ["male", "female"], default: "male" },
+    gender: { type: String, enum: ["male", "female"], required: true },
     class: { type: String, enum: ["warrior", "mage"], required: true },
 
     level: { type: Number, default: 1 },
@@ -69,7 +72,7 @@ const PlayerSchema = new mongoose.Schema(
     },
 
     inventory: { type: [ItemSchema], default: [] },
-    materials: { type: [MaterialSchema], default: [] }
+    materials: { type: [MaterialStackSchema], default: [] }
   },
   { timestamps: true }
 );
