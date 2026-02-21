@@ -9,8 +9,8 @@ const {
 const Player = require("./Player");
 const { bar, xpToNextLevel } = require("./bar");
 const { rollItem, rollMaterials } = require("./loot");
-// in-memory combats (v1)
-const fights = new Map(); // key: `${guildId}:${userId}`
+
+const fights = new Map();
 
 function keyOf(interaction) {
   return `${interaction.guildId}:${interaction.user.id}`;
@@ -20,7 +20,6 @@ function roll(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// ====== AUTO-MIGRATION (يحميك من Validation error) ======
 const BASE_CHARACTER_IDS = {
   warrior_male: 1,
   warrior_female: 2,
@@ -30,53 +29,28 @@ const BASE_CHARACTER_IDS = {
 
 function ensureBaseCharacterId(p) {
   const key = `${p.class}_${p.gender || "male"}`;
-
-  // إذا ماكو id أو كان سترنق قديم (migration)
   if (!p.baseCharacterId || typeof p.baseCharacterId === "string") {
     p.baseCharacterId = BASE_CHARACTER_IDS[key] || 1;
   }
 }
 
-// ====== Equipment stats (مبدئي - نربطه بـ loot.js لاحقاً) ======
-function getEquipmentStats(p) {
-  // إذا عندك نظام معدات في Player.js لاحقاً نقرأه من هناك
-  // حالياً نخليها صفر
-  return {
-    atkFlat: 0,
-    defFlat: 0,
-    hpFlat: 0,
-    manaFlat: 0,
-    crit: 0,
-    skillPower: 0,
-    manaRegen: 0
-  };
-}
-
 function classBaseStats(p) {
-  // base stats بدون معدات
   if (p.class === "warrior") {
-    return { atkMin: 10, atkMax: 16, def: 3, skillCost: 0 };
+    return { atkMin: 10, atkMax: 16, def: 3 };
   }
-  // mage
-  return { atkMin: 8, atkMax: 14, def: 1, skillCost: 10 };
+  return { atkMin: 8, atkMax: 14, def: 1 };
 }
 
 function combinedStats(p) {
   const base = classBaseStats(p);
-  const eq = getEquipmentStats(p);
-
   return {
-    atkMin: base.atkMin + eq.atkFlat,
-    atkMax: base.atkMax + eq.atkFlat,
-    def: base.def + eq.defFlat,
-    crit: eq.crit,
-    skillPower: eq.skillPower,
-    manaRegen: eq.manaRegen
+    atkMin: base.atkMin,
+    atkMax: base.atkMax,
+    def: base.def
   };
 }
 
 function makeMonsterForLevel(level) {
-  // Tier بسيط حسب level (نوسعها حسب جدول الدنجن لاحقاً)
   const tier =
     level < 5 ? 1 :
     level < 10 ? 2 :
@@ -94,15 +68,7 @@ function makeMonsterForLevel(level) {
     level < 30 ? "Warden of Depths" :
     "Abyss Overlord";
 
-  return {
-    tier,
-    name,
-    level,
-    hp,
-    hpMax: hp,
-    atkMin,
-    atkMax
-  };
+  return { tier, name, level, hp, hpMax: hp, atkMin, atkMax };
 }
 
 function renderEmbed(p, m, logLines) {
@@ -115,82 +81,75 @@ function renderEmbed(p, m, logLines) {
   return new EmbedBuilder()
     .setTitle(`Dungeon Tier ${m.tier} — ${m.name} (Lv.${m.level})`)
     .addFields(
-      { name: "Boss HP", value: mHpLine, inline: false },
-      { name: "Your HP", value: pHpLine, inline: false },
-      { name: "Your Mana", value: pManaLine, inline: false },
+      { name: "Boss HP", value: mHpLine },
+      { name: "Your HP", value: pHpLine },
+      { name: "Your Mana", value: pManaLine },
       {
-        name: "Stats (with equipment)",
-        value:
-          `ATK: ${st.atkMin}-${st.atkMax} | DEF: ${st.def}\n` +
-          `Crit: ${st.crit}% | SkillPower: ${st.skillPower}% | ManaRegen: ${st.manaRegen}`,
-        inline: false
+        name: "Stats",
+        value: `ATK: ${st.atkMin}-${st.atkMax} | DEF: ${st.def}`
       },
       {
         name: "Battle Log",
-        value: logLines.length ? logLines.slice(-6).join("\n") : "—",
-        inline: false
+        value: logLines.slice(-6).join("\n") || "—"
       }
-    )
-    .setFooter({ text: "v1: Loot + Materials active later. Equip/Sell/Upgrade next." });
+    );
 }
 
 function buttonsFor(p) {
-  const attack = new ButtonBuilder()
-    .setCustomId("d_attack")
-    .setLabel("Attack")
-    .setStyle(ButtonStyle.Primary);
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("d_attack")
+      .setLabel("Attack")
+      .setStyle(ButtonStyle.Primary),
 
-  const skillLabel = p.class === "warrior" ? "Power Strike" : "Firebolt";
-  const skill = new ButtonBuilder()
-    .setCustomId("d_skill")
-    .setLabel(skillLabel)
-    .setStyle(ButtonStyle.Secondary)
-    .setDisabled(p.class === "mage" && p.mana < 10);
+    new ButtonBuilder()
+      .setCustomId("d_skill")
+      .setLabel(p.class === "warrior" ? "Power Strike" : "Firebolt")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(p.class === "mage" && p.mana < 10),
 
-  const potion = new ButtonBuilder()
-    .setCustomId("d_potion")
-    .setLabel("Potion")
-    .setStyle(ButtonStyle.Success);
+    new ButtonBuilder()
+      .setCustomId("d_potion")
+      .setLabel("Potion")
+      .setStyle(ButtonStyle.Success),
 
-  const run = new ButtonBuilder()
-    .setCustomId("d_run")
-    .setLabel("Run")
-    .setStyle(ButtonStyle.Danger);
-
-  return new ActionRowBuilder().addComponents(attack, skill, potion, run);
+    new ButtonBuilder()
+      .setCustomId("d_run")
+      .setLabel("Run")
+      .setStyle(ButtonStyle.Danger)
+  );
 }
 
-async function finishVictory(interaction, p, m, logLines) {
+async function finishVictory(interaction, p, m) {
   const goldGain = roll(10, 25) + p.level * 2;
   const xpGain = roll(15, 30) + p.level * 3;
 
   p.gold += goldGain;
   p.xp += xpGain;
-const dungeonTier =
-  p.level <= 5 ? 1 :
-  p.level <= 10 ? 2 :
-  p.level <= 20 ? 3 : 4;
 
-// 70% item drop
-let droppedItem = null;
-if (Math.random() < 0.70) {
-  droppedItem = rollItem(p.class, dungeonTier, p.level);
-  p.inventory.push(droppedItem);
-}
+  const dungeonTier =
+    p.level <= 5 ? 1 :
+    p.level <= 10 ? 2 :
+    p.level <= 20 ? 3 : 4;
 
-// materials drop
-const mats = rollMaterials(dungeonTier);
-for (const d of mats) {
-  const existing = p.materials.find(x => x.id === d.id);
-  if (existing) existing.qty += d.qty;
-  else p.materials.push({ id: d.id, name: d.name, qty: d.qty });
-}
+  let droppedItem = null;
+  if (Math.random() < 0.7) {
+    droppedItem = rollItem(p.class, dungeonTier, p.level);
+    p.inventory.push(droppedItem);
+  }
+
+  const mats = rollMaterials(dungeonTier);
+  for (const d of mats) {
+    const existing = p.materials.find(x => x.id === d.id);
+    if (existing) existing.qty += d.qty;
+    else p.materials.push({ id: d.id, name: d.name, qty: d.qty });
+  }
+
   let leveled = false;
   while (p.xp >= xpToNextLevel(p.level) && p.level < 30) {
     p.xp -= xpToNextLevel(p.level);
-    p.level += 1;
+    p.level++;
     leveled = true;
-
     p.hpMax += p.class === "warrior" ? 15 : 10;
     p.manaMax += p.class === "mage" ? 8 : 3;
     p.hp = p.hpMax;
@@ -200,38 +159,38 @@ for (const d of mats) {
   ensureBaseCharacterId(p);
   await p.save();
 
+  const itemLine = droppedItem
+    ? `🎁 ${droppedItem.name} (${droppedItem.tier})`
+    : "🎁 No item drop";
+
+  const matsLine = mats.length
+    ? mats.map(x => `🧱 ${x.name} x${x.qty}`).join("\n")
+    : "🧱 No materials";
+
   const embed = new EmbedBuilder()
     .setTitle("Victory ✅")
-    const itemLine = droppedItem
-  ? `🎁 Item: **${droppedItem.name}** (${droppedItem.tier}) [${droppedItem.slot}]`
-  : `🎁 Item: No drop`;
+    .setDescription(
+      [
+        `You defeated **${m.name}**`,
+        `+${xpGain} XP | +${goldGain} Gold`,
+        leveled ? `Level Up! Now Lv.${p.level}` : "",
+        "",
+        itemLine,
+        matsLine
+      ].filter(Boolean).join("\n")
+    );
 
-const matsLine = mats.length
-  ? mats.map(x => `🧱 ${x.name} x${x.qty}`).join("\n")
-  : "🧱 No materials";
-
-.setDescription(
-  [
-    `You defeated **${m.name}**.`,
-    `Rewards: **+${xpGain} XP**, **+${goldGain} Gold**.`,
-    leveled ? `Level Up! You are now **Lv.${p.level}**.` : "",
-    "",
-    itemLine,
-    matsLine
-  ].filter(Boolean).join("\n")
-);
   await interaction.update({ embeds: [embed], components: [] });
 }
 
 async function finishDefeat(interaction, p, m) {
   p.hp = Math.max(1, Math.floor(p.hpMax * 0.5));
-
   ensureBaseCharacterId(p);
   await p.save();
 
   const embed = new EmbedBuilder()
     .setTitle("Defeat ❌")
-    .setDescription(`**${m.name}** defeated you.\nYou escaped with **${p.hp}/${p.hpMax} HP**.`);
+    .setDescription(`Defeated by **${m.name}**`);
 
   await interaction.update({ embeds: [embed], components: [] });
 }
@@ -239,112 +198,108 @@ async function finishDefeat(interaction, p, m) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("dungeon")
-    .setDescription("Enter a dungeon and fight a boss (fast turn-based)."),
+    .setDescription("Enter a dungeon"),
 
   async execute(interaction) {
-    const guildId = interaction.guildId;
-    const userId = interaction.user.id;
+    const p = await Player.findOne({
+      guildId: interaction.guildId,
+      userId: interaction.user.id
+    });
 
-    const p = await Player.findOne({ guildId, userId });
     if (!p) {
-      return interaction.reply({ content: "لازم تسوي شخصية أول: استخدم /start", ephemeral: true });
+      return interaction.reply({
+        content: "استخدم /start أولاً",
+        ephemeral: true
+      });
     }
 
-    // مهم: يصلّح اللاعبين القدامى قبل أي حفظ
     ensureBaseCharacterId(p);
 
     const k = keyOf(interaction);
     if (fights.has(k)) {
-      return interaction.reply({ content: "عندك قتال شغال. كمل القتال الحالي.", ephemeral: true });
+      return interaction.reply({
+        content: "عندك قتال شغال",
+        ephemeral: true
+      });
     }
 
     const monster = makeMonsterForLevel(p.level);
 
-    const logLines = [
-      "You entered the dungeon...",
-      `A wild **${monster.name}** appears!`
-    ];
-
-    fights.set(k, { monster, logLines });
-
-    const embed = renderEmbed(p, monster, logLines);
+    fights.set(k, {
+      monster,
+      logLines: [
+        "You entered the dungeon...",
+        `A wild ${monster.name} appears!`
+      ]
+    });
 
     return interaction.reply({
-      embeds: [embed],
+      embeds: [renderEmbed(p, monster, fights.get(k).logLines)],
       components: [buttonsFor(p)],
       ephemeral: true
     });
   },
 
-  // مهم: هذا لازم يتم استدعاءه من interactionCreate لما interaction.isButton()
   async onButton(interaction) {
     const k = keyOf(interaction);
     const state = fights.get(k);
     if (!state) {
-      return interaction.reply({ content: "مافي قتال شغال. استخدم /dungeon", ephemeral: true });
+      return interaction.reply({ content: "No active fight", ephemeral: true });
     }
 
-    const p = await Player.findOne({ guildId: interaction.guildId, userId: interaction.user.id });
-    if (!p) {
-      fights.delete(k);
-      return interaction.reply({ content: "لازم تسوي شخصية أول: /start", ephemeral: true });
-    }
+    const p = await Player.findOne({
+      guildId: interaction.guildId,
+      userId: interaction.user.id
+    });
 
-    // auto-fix
+    if (!p) return;
+
     ensureBaseCharacterId(p);
 
     const m = state.monster;
     const logLines = state.logLines;
-
     const st = combinedStats(p);
 
-    // player action
     if (interaction.customId === "d_attack") {
       const dmg = roll(st.atkMin, st.atkMax);
-      m.hp = Math.max(0, m.hp - dmg);
-      logLines.push(`You attack for **${dmg}**.`);
+      m.hp -= dmg;
+      logLines.push(`You hit for ${dmg}`);
     }
 
     if (interaction.customId === "d_skill") {
-      if (p.class === "mage") {
-        if (p.mana < 10) {
-          return interaction.reply({ content: "مانا غير كافي.", ephemeral: true });
-        }
-        p.mana -= 10;
-        const dmg = roll(16, 26) + Math.floor(p.level / 2);
-        m.hp = Math.max(0, m.hp - dmg);
-        logLines.push(`You cast **Firebolt** for **${dmg}**.`);
-      } else {
-        const dmg = roll(18, 28) + Math.floor(p.level / 2);
-        m.hp = Math.max(0, m.hp - dmg);
-        logLines.push(`You use **Power Strike** for **${dmg}**.`);
-      }
+      if (p.class === "mage" && p.mana < 10)
+        return interaction.reply({ content: "No mana", ephemeral: true });
+
+      if (p.class === "mage") p.mana -= 10;
+
+      const dmg = roll(16, 26);
+      m.hp -= dmg;
+      logLines.push(`Skill hit for ${dmg}`);
     }
 
     if (interaction.customId === "d_potion") {
       const heal = roll(20, 35);
       p.hp = Math.min(p.hpMax, p.hp + heal);
-      logLines.push(`You drink a potion and heal **${heal}**.`);
+      logLines.push(`Healed ${heal}`);
     }
 
     if (interaction.customId === "d_run") {
       fights.delete(k);
       await p.save();
-      const embed = new EmbedBuilder().setTitle("Escaped 🏃").setDescription("You ran away safely.");
-      return interaction.update({ embeds: [embed], components: [] });
+      return interaction.update({
+        embeds: [new EmbedBuilder().setTitle("Escaped")],
+        components: []
+      });
     }
 
-    // victory?
     if (m.hp <= 0) {
       fights.delete(k);
-      return finishVictory(interaction, p, m, logLines);
+      return finishVictory(interaction, p, m);
     }
 
-    // boss turn
-    const bossDmgRaw = roll(m.atkMin, m.atkMax);
-    const bossDmg = Math.max(1, bossDmgRaw - st.def);
-    p.hp = Math.max(0, p.hp - bossDmg);
-    logLines.push(`**${m.name}** hits you for **${bossDmg}**.`);
+    const bossDmg = roll(m.atkMin, m.atkMax) - st.def;
+    p.hp -= Math.max(1, bossDmg);
+    logLines.push(`${m.name} hits for ${bossDmg}`);
 
     if (p.hp <= 0) {
       fights.delete(k);
@@ -353,9 +308,8 @@ module.exports = {
 
     await p.save();
 
-    const embed = renderEmbed(p, m, logLines);
     return interaction.update({
-      embeds: [embed],
+      embeds: [renderEmbed(p, m, logLines)],
       components: [buttonsFor(p)]
     });
   }
