@@ -17,7 +17,7 @@ const client = new Client({
 client.commands = new Collection();
 
 // Load command files manually
-const commandFiles = ["ping.js", "start.js"];
+const commandFiles = ["ping.js", "start.js", "profile.js"];
 
 const slashData = [];
 
