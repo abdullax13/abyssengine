@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder } = require("discord.js");
 const Player = require("./Player");
 const { generateProfileCard } = require("./profileCard");
 module.exports = {
