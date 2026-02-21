@@ -1,19 +1,14 @@
 {
   "name": "abyssengine",
-  "version": "0.1.0",
-  "description": "AbyssEngine - Discord RPG Bot",
+  "version": "1.0.0",
   "main": "index.js",
-  "type": "commonjs",
   "scripts": {
     "start": "node index.js"
   },
-  "engines": {
-    "node": ">=18"
-  },
   "dependencies": {
-    "discord.js": "^14.16.3",
-    "dotenv": "^16.4.5",
-    "mongoose": "^8.6.3"
-    "canvas": "^2.11.2"
+    "canvas": "^2.11.2",
+    "discord.js": "^14.0.0",
+    "dotenv": "^16.0.0",
+    "mongoose": "^7.0.0"
   }
 }
