@@ -9,7 +9,6 @@ const {
 const Player = require("./Player");
 const { bar, xpToNextLevel } = require("./bar");
 
-// in-memory combats (v1). Later we can persist if needed.
 const fights = new Map(); // key: `${guildId}:${userId}`
 
 function keyOf(interaction) {
@@ -21,16 +20,14 @@ function roll(min, max) {
 }
 
 function classStats(p) {
-  // base stats; later derived from equipment
   if (p.class === "warrior") {
-    return { atkMin: 10, atkMax: 16, def: 3, skillCost: 0 };
+    return { atkMin: 10, atkMax: 16, def: 3 };
   }
   // mage
-  return { atkMin: 8, atkMax: 14, def: 1, skillCost: 10 };
+  return { atkMin: 8, atkMax: 14, def: 1 };
 }
 
 function makeMonsterForLevel(level) {
-  // v1 simple scaling
   const hp = 60 + level * 12;
   const atkMin = 6 + Math.floor(level * 1.3);
   const atkMax = 10 + Math.floor(level * 1.6);
@@ -58,42 +55,50 @@ function renderEmbed(p, m, logLines) {
       { name: "Your Mana", value: pManaLine, inline: false },
       { name: "Battle Log", value: logLines.length ? logLines.slice(-6).join("\n") : "—", inline: false }
     )
-    .setFooter({ text: "Turn-based fast fight. Images will come later (Canvas layers)." });
+    .setFooter({ text: "Turn-based fast fight (v1). Images later via Canvas." });
 }
 
 function buttonsFor(p) {
-  const attack = new ButtonBuilder().setCustomId("d_attack").setLabel("Attack").setStyle(ButtonStyle.Primary);
+  const attack = new ButtonBuilder()
+    .setCustomId("d_attack")
+    .setLabel("Attack")
+    .setStyle(ButtonStyle.Primary);
 
   const skillLabel = p.class === "warrior" ? "Power Strike" : "Firebolt";
+  const skillDisabled = p.class === "mage" && p.mana < 10;
+
   const skill = new ButtonBuilder()
     .setCustomId("d_skill")
     .setLabel(skillLabel)
     .setStyle(ButtonStyle.Secondary)
-    .setDisabled(p.class === "mage" && p.mana < 10);
+    .setDisabled(skillDisabled);
 
-  const potion = new ButtonBuilder().setCustomId("d_potion").setLabel("Potion").setStyle(ButtonStyle.Success);
+  const potion = new ButtonBuilder()
+    .setCustomId("d_potion")
+    .setLabel("Potion")
+    .setStyle(ButtonStyle.Success);
 
-  const run = new ButtonBuilder().setCustomId("d_run").setLabel("Run").setStyle(ButtonStyle.Danger);
+  const run = new ButtonBuilder()
+    .setCustomId("d_run")
+    .setLabel("Run")
+    .setStyle(ButtonStyle.Danger);
 
   return new ActionRowBuilder().addComponents(attack, skill, potion, run);
 }
 
 async function finishVictory(interaction, p, m, logLines) {
-  // rewards
   const goldGain = roll(10, 25) + p.level * 2;
   const xpGain = roll(15, 30) + p.level * 3;
 
   p.gold += goldGain;
   p.xp += xpGain;
 
-  // level up check
   let leveled = false;
   while (p.xp >= xpToNextLevel(p.level) && p.level < 30) {
     p.xp -= xpToNextLevel(p.level);
     p.level += 1;
     leveled = true;
 
-    // growth
     p.hpMax += p.class === "warrior" ? 15 : 10;
     p.manaMax += p.class === "mage" ? 8 : 3;
     p.hp = p.hpMax;
@@ -116,7 +121,6 @@ async function finishVictory(interaction, p, m, logLines) {
 }
 
 async function finishDefeat(interaction, p, m) {
-  // simple defeat: restore to half hp (can tune later)
   p.hp = Math.max(1, Math.floor(p.hpMax * 0.5));
   await p.save();
 
@@ -141,16 +145,14 @@ module.exports = {
       return interaction.reply({ content: "لازم تسوي شخصية أول: استخدم /start", ephemeral: true });
     }
 
-    // prevent multiple fights
     const k = keyOf(interaction);
     if (fights.has(k)) {
       return interaction.reply({ content: "عندك قتال شغال. كمل القتال الحالي.", ephemeral: true });
     }
 
-    // create monster based on player level ranges later; v1 uses player level
     const monster = makeMonsterForLevel(p.level);
 
-    const logLines = [`You entered the dungeon...`, `A wild **${monster.name}** appears!`];
+    const logLines = ["You entered the dungeon...", `A wild **${monster.name}** appears!`];
     fights.set(k, { monster, logLines });
 
     const embed = renderEmbed(p, monster, logLines);
@@ -162,8 +164,10 @@ module.exports = {
     });
   },
 
-  // button handler (called from index.js)
   async onButton(interaction) {
+    // حماية: تأكد انها زر
+    if (!interaction.isButton()) return;
+
     const k = keyOf(interaction);
     const state = fights.get(k);
     if (!state) {
@@ -181,14 +185,12 @@ module.exports = {
 
     const stats = classStats(p);
 
-    // player action
+    // Player action
     if (interaction.customId === "d_attack") {
       const dmg = roll(stats.atkMin, stats.atkMax);
       m.hp = Math.max(0, m.hp - dmg);
       logLines.push(`You attack for **${dmg}**.`);
-    }
-
-    if (interaction.customId === "d_skill") {
+    } else if (interaction.customId === "d_skill") {
       if (p.class === "mage") {
         if (p.mana < 10) {
           return interaction.reply({ content: "مانا غير كافي.", ephemeral: true });
@@ -198,40 +200,36 @@ module.exports = {
         m.hp = Math.max(0, m.hp - dmg);
         logLines.push(`You cast **Firebolt** for **${dmg}**.`);
       } else {
-        // warrior skill: big hit
         const dmg = roll(18, 28) + Math.floor(p.level / 2);
         m.hp = Math.max(0, m.hp - dmg);
         logLines.push(`You use **Power Strike** for **${dmg}**.`);
       }
-    }
-
-    if (interaction.customId === "d_potion") {
-      // simple potion restores hp; later inventory
+    } else if (interaction.customId === "d_potion") {
       const heal = roll(20, 35);
       p.hp = Math.min(p.hpMax, p.hp + heal);
       logLines.push(`You drink a potion and heal **${heal}**.`);
-    }
-
-    if (interaction.customId === "d_run") {
+    } else if (interaction.customId === "d_run") {
       fights.delete(k);
       await p.save();
       const embed = new EmbedBuilder().setTitle("Escaped 🏃").setDescription("You ran away safely.");
       return interaction.update({ embeds: [embed], components: [] });
+    } else {
+      return interaction.reply({ content: "زر غير معروف.", ephemeral: true });
     }
 
-    // check victory
+    // Victory?
     if (m.hp <= 0) {
       fights.delete(k);
       return finishVictory(interaction, p, m, logLines);
     }
 
-    // boss turn (monster attacks)
+    // Boss turn
     const bossDmgRaw = roll(m.atkMin, m.atkMax);
     const bossDmg = Math.max(1, bossDmgRaw - stats.def);
     p.hp = Math.max(0, p.hp - bossDmg);
     logLines.push(`**${m.name}** hits you for **${bossDmg}**.`);
 
-    // check defeat
+    // Defeat?
     if (p.hp <= 0) {
       fights.delete(k);
       return finishDefeat(interaction, p, m);
