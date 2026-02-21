@@ -24,7 +24,7 @@ function roll(min, max) {
 function ensureBaseCharacterId(p) {
   if (!p.baseCharacterId) {
     // ثابت ويتبع نفس منطق /start
-    p.baseCharacterId = `${p.class}_${p.gender || "male"}`;
+    p.baseCharacterId = 1;
   }
 }
 
