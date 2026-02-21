@@ -1,10 +1,37 @@
 const { SlashCommandBuilder } = require("discord.js");
 const Player = require("./Player");
 
-const baseIdMap = {
-  warrior: { male: 1, female: 2 },
-  mage: { male: 3, female: 4 }
-};
+function buildBaseCharacterId(gender, klass) {
+  // ثابت وما يتغير مع الوقت (مهم عشان الصور لاحقاً)
+  // أمثلة: warrior_male, mage_female
+  return `${klass}_${gender}`;
+}
+
+function starterStats(klass) {
+  // ستاتس مبدئي بسيط (نقدر نعدله لاحقاً)
+  if (klass === "warrior") {
+    return {
+      level: 1,
+      xp: 0,
+      gold: 0,
+      hpMax: 120,
+      hp: 120,
+      manaMax: 30,
+      mana: 30
+    };
+  }
+
+  // mage
+  return {
+    level: 1,
+    xp: 0,
+    gold: 0,
+    hpMax: 100,
+    hp: 100,
+    manaMax: 60,
+    mana: 60
+  };
+}
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -43,46 +70,49 @@ module.exports = {
     const existing = await Player.findOne({ guildId, userId });
     if (existing) {
       return interaction.reply({
-        content: "You already have a character.",
+        content: "عندك شخصية مسبقاً. استخدم /profile أو كمل /dungeon.",
         ephemeral: true
       });
     }
 
-    const baseCharacterId = baseIdMap?.[klass]?.[gender];
-    if (!baseCharacterId) {
-      return interaction.reply({
-        content: "Invalid class/gender selection.",
-        ephemeral: true
-      });
-    }
+    const baseCharacterId = buildBaseCharacterId(gender, klass);
+    const stats = starterStats(klass);
 
-    // initial stats (v1)
-    const initial =
-      klass === "warrior"
-        ? { hpMax: 120, manaMax: 35 }
-        : { hpMax: 90, manaMax: 70 };
-
-    await Player.create({
+    // IMPORTANT: نخلي البنية مرنة حتى لو Player.js عندك فيه حقول زيادة
+    // (MongoDB بيتجاهل الحقول اللي مو موجودة بالـ schema)
+    const doc = {
       guildId,
       userId,
-      baseCharacterId,
       name,
       gender,
       class: klass,
-      level: 1,
-      xp: 0,
-      gold: 0,
-      hpMax: initial.hpMax,
-      hp: initial.hpMax,
-      manaMax: initial.manaMax,
-      mana: initial.manaMax,
-      equipment: { weapon: null, armor: null, helmet: null },
+
+      baseCharacterId,
+
+      level: stats.level,
+      xp: stats.xp,
+      gold: stats.gold,
+      hpMax: stats.hpMax,
+      hp: stats.hp,
+      manaMax: stats.manaMax,
+      mana: stats.mana,
+
+      // تجهيزات أولية (حتى لو ما تستخدمها الحين)
+      equipment: {
+        weapon: null,
+        armor: null,
+        helm: null,
+        boots: null,
+        ring: null
+      },
       inventory: [],
-      materials: []
-    });
+      materials: {}
+    };
+
+    await Player.create(doc);
 
     await interaction.reply({
-      content: `Character ${name} created successfully.`,
+      content: `✅ تم إنشاء الشخصية: **${name}**\nClass: **${klass}** | Gender: **${gender}**\nID: **${baseCharacterId}**`,
       ephemeral: true
     });
   }
