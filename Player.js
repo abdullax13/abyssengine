@@ -1,35 +1,44 @@
 const mongoose = require("mongoose");
 
-const PlayerSchema = new mongoose.Schema(
-  {
-    guildId: { type: String, required: true, index: true },
-    userId: { type: String, required: true, index: true },
+const itemSchema = new mongoose.Schema({
+  id: String,
+  name: String,
+  type: String, // weapon, armor, helmet
+  tier: String, // common, rare, epic
+  stats: {
+    atk: { type: Number, default: 0 },
+    def: { type: Number, default: 0 },
+    hp: { type: Number, default: 0 },
+    mana: { type: Number, default: 0 }
+  }
+});
 
-    name: { type: String, required: true },
-    gender: { type: String, enum: ["male", "female"], default: "male" },
-    class: { type: String, enum: ["warrior", "mage"], required: true },
+const playerSchema = new mongoose.Schema({
+  guildId: String,
+  userId: String,
 
-    level: { type: Number, default: 1 },
-    xp: { type: Number, default: 0 },
+  baseCharacterId: Number,
 
-    hp: { type: Number, default: 100 },
-    hpMax: { type: Number, default: 100 },
+  name: String,
+  class: String,
+  gender: String,
 
-    mana: { type: Number, default: 50 },
-    manaMax: { type: Number, default: 50 },
+  level: { type: Number, default: 1 },
+  xp: { type: Number, default: 0 },
+  gold: { type: Number, default: 0 },
 
-    gold: { type: Number, default: 0 },
+  hp: Number,
+  hpMax: Number,
+  mana: Number,
+  manaMax: Number,
 
-    // v1 equipment placeholders (for future image layers)
-    equipment: {
-      head: { type: String, default: null },
-      weapon: { type: String, default: null },
-      chest: { type: String, default: null }
-    }
+  equipment: {
+    weapon: itemSchema,
+    armor: itemSchema,
+    helmet: itemSchema
   },
-  { timestamps: true }
-);
 
-PlayerSchema.index({ guildId: 1, userId: 1 }, { unique: true });
+  inventory: [itemSchema]
+});
 
-module.exports = mongoose.model("Player", PlayerSchema);
+module.exports = mongoose.model("Player", playerSchema);
