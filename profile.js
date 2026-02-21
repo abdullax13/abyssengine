@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const Player = require("./Player");
-
+const { generateProfileCard } = require("./profileCard");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("profile")
@@ -18,19 +18,9 @@ module.exports = {
       });
     }
 
-    const embed = new EmbedBuilder()
-      .setTitle(`Profile: ${p.name}`)
-      .addFields(
-        { name: "Class", value: p.class, inline: true },
-        { name: "Gender", value: p.gender, inline: true },
-        { name: "Level", value: String(p.level), inline: true },
-        { name: "XP", value: String(p.xp), inline: true },
-        { name: "HP", value: String(p.hp), inline: true },
-        { name: "Mana", value: String(p.mana), inline: true },
-        { name: "Gold", value: String(p.gold), inline: true }
-      )
-      .setFooter({ text: `User: ${interaction.user.username}` });
+    const image = await generateProfileCard(p);
 
-    return interaction.reply({ embeds: [embed], ephemeral: true });
-  }
-};
+return interaction.reply({
+  files: [{ attachment: image, name: "profile.png" }],
+  ephemeral: true
+});
