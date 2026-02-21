@@ -1,11 +1,11 @@
 {
   "name": "abyssengine",
   "version": "0.1.0",
-  "description": "AbyssEngine - Discord RPG Dungeon & Raid Bot",
-  "main": "src/index.js",
+  "description": "AbyssEngine - Discord RPG Bot",
+  "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node index.js"
   },
   "engines": {
     "node": ">=18"
@@ -13,7 +13,6 @@
   "dependencies": {
     "discord.js": "^14.16.3",
     "dotenv": "^16.4.5",
-    "mongoose": "^8.6.3",
-    "uuid": "^10.0.0"
+    "mongoose": "^8.6.3"
   }
 }
