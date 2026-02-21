@@ -103,13 +103,7 @@ module.exports = {
       mana: stats.mana,
 
       // تجهيزات أولية (حتى لو ما تستخدمها الحين)
-      equipment: {
-        weapon: null,
-        armor: null,
-        helm: null,
-        boots: null,
-        ring: null
-      },
+      equipment: { weapon: null, armor: null, helmet: null },
       inventory: [],
       materials: []
     };
