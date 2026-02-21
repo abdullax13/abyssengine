@@ -41,8 +41,22 @@ client.on(interactionEvent.name, (...args) =>
 
 async function registerCommands() {
   const rest = new REST({ version: "10" }).setToken(TOKEN);
-  await rest.put(Routes.applicationCommands(CLIENT_ID), { body: slashData });
-  logger.info("Slash commands registered");
+
+  const guildId = process.env.GUILD_ID;
+
+  if (guildId) {
+    await rest.put(
+      Routes.applicationGuildCommands(CLIENT_ID, guildId),
+      { body: slashData }
+    );
+    logger.info("Slash commands registered (GUILD)");
+  } else {
+    await rest.put(
+      Routes.applicationCommands(CLIENT_ID),
+      { body: slashData }
+    );
+    logger.info("Slash commands registered (GLOBAL)");
+  }
 }
 
 async function startBot() {
